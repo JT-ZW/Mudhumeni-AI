@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment variables (NEVER commit these!)
+.env
+.env.local
+.env.development
+
+# Virtual environments
+.venv
+env/
+venv/
+ENV/
+murimi/
+mudhumeni/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Development files
+*.md.backup
+requirements_optimized.txt
+
+# Note: model files (*.pkl) are included for deployment

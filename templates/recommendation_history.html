@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Recommendation History - Mudhumeni AI</title>
+    <!-- Bootstrap CSS -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <!-- Custom CSS -->
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/style.css') }}"
+    />
+    <style>
+      .recommendation-card {
+        margin-bottom: 20px;
+        transition: transform 0.2s;
+      }
+      .recommendation-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+      }
+      .crop-badge {
+        font-size: 0.9rem;
+        padding: 8px 12px;
+        margin-bottom: 10px;
+      }
+      .season-badge {
+        margin-left: 10px;
+      }
+      .recommendation-date {
+        color: #666;
+        font-size: 0.9rem;
+      }
+      .soil-params {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 10px;
+      }
+      .soil-param {
+        background-color: #f8f9fa;
+        padding: 5px 10px;
+        border-radius: 15px;
+        font-size: 0.8rem;
+      }
+      .loading-spinner {
+        display: none;
+        text-align: center;
+        padding: 20px;
+      }
+      .no-records {
+        text-align: center;
+        padding: 30px;
+        background: #f9f9f9;
+        border-radius: 5px;
+        margin-top: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-success">
+      <div class="container">
+        <a class="navbar-brand" href="/">Mudhumeni AI</a>
+        <button
+          class="navbar-toggler"
+          type="button"
+          data-bs-toggle="collapse"
+          data-bs-target="#navbarNav"
+        >
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+          <ul class="navbar-nav ms-auto">
+            <li class="nav-item">
+              <a class="nav-link" href="/">Home</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/chatbot">Chatbot</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/crop-recommendation"
+                >Crop Recommendation</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link active" href="/recommendation-history"
+                >History</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/about">About</a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container mt-4">
+      <div class="row">
+        <div class="col-12">
+          <h2 class="mb-4">Your Crop Recommendation History</h2>
+          <p class="text-muted">
+            View your previous crop recommendations and track your farming
+            patterns over time.
+          </p>
+        </div>
+      </div>
+
+      <!-- Loading Spinner -->
+      <div class="loading-spinner" id="loadingSpinner">
+        <div class="spinner-border text-success" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-2">Loading your recommendation history...</p>
+      </div>
+
+      <!-- No Records Message -->
+      <div class="no-records d-none" id="noRecords">
+        <div class="text-center">
+          <i
+            class="bi bi-clipboard-x"
+            style="font-size: 3rem; color: #6c757d"
+          ></i>
+          <h4 class="mt-3">No Recommendation History Found</h4>
+          <p>
+            You haven't made any crop recommendations yet. Try the
+            <a href="/crop-recommendation">crop recommendation</a> tool to get
+            started!
+          </p>
+        </div>
+      </div>
+
+      <!-- Recommendation Cards Container -->
+      <div class="row" id="recommendationCards">
+        <!-- Recommendation cards will be dynamically added here -->
+      </div>
+    </div>
+
+    <!-- Recommendation Detail Modal -->
+    <div
+      class="modal fade"
+      id="recommendationDetailModal"
+      tabindex="-1"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header bg-light">
+            <h5 class="modal-title" id="modalCropName">
+              Crop Recommendation Details
+            </h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
+          </div>
+          <div class="modal-body" id="modalBody">
+            <!-- Details will be dynamically added here -->
+          </div>
+          <div class="modal-footer">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              data-bs-dismiss="modal"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-dark text-light py-4 mt-5">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-6">
+            <h5>Mudhumeni AI</h5>
+            <p>Your farming assistant for Southern Africa</p>
+          </div>
+          <div class="col-md-6 text-md-end">
+            <p>&copy; 2025 Mudhumeni AI. All rights reserved.</p>
+          </div>
+        </div>
+      </div>
+    </footer>
+
+    <!-- Bootstrap and other scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        // Show loading spinner
+        document.getElementById("loadingSpinner").style.display = "block";
+
+        // Fetch recommendation history
+        fetch("/api/recommendation_history")
+          .then((response) => response.json())
+          .then((data) => {
+            // Hide loading spinner
+            document.getElementById("loadingSpinner").style.display = "none";
+
+            if (data.success) {
+              const recommendations = data.recommendations;
+              const container = document.getElementById("recommendationCards");
+
+              if (recommendations.length === 0) {
+                // Show no records message
+                document.getElementById("noRecords").classList.remove("d-none");
+              } else {
+                // Hide no records message
+                document.getElementById("noRecords").classList.add("d-none");
+
+                // Display recommendations
+                recommendations.forEach((rec) => {
+                  const card = createRecommendationCard(rec);
+                  container.appendChild(card);
+                });
+              }
+            } else {
+              console.error(
+                "Error fetching recommendation history:",
+                data.error
+              );
+              document.getElementById("noRecords").classList.remove("d-none");
+              document
+                .getElementById("noRecords")
+                .querySelector("p").textContent =
+                "Error loading recommendations. Please try again later.";
+            }
+          })
+          .catch((error) => {
+            console.error("Fetch error:", error);
+            document.getElementById("loadingSpinner").style.display = "none";
+            document.getElementById("noRecords").classList.remove("d-none");
+            document
+              .getElementById("noRecords")
+              .querySelector("p").textContent =
+              "Error connecting to the server. Please try again later.";
+          });
+      });
+
+      function createRecommendationCard(recommendation) {
+        const col = document.createElement("div");
+        col.className = "col-md-6 col-lg-4";
+
+        const date = new Date(recommendation.recommendation_date);
+        const formattedDate =
+          date.toLocaleDateString() + " " + date.toLocaleTimeString();
+
+        const inputs = recommendation.inputs;
+        const outputs = recommendation.outputs;
+
+        col.innerHTML = `
+                <div class="card recommendation-card">
+                    <div class="card-body">
+                        <span class="badge bg-success crop-badge">${outputs.predicted_crop.toUpperCase()}</span>
+                        <span class="badge bg-info season-badge">${
+                          outputs.season
+                        }</span>
+                        <h5 class="card-title mt-2">${capitalizeFirstLetter(
+                          outputs.predicted_crop
+                        )} Recommendation</h5>
+                        <p class="recommendation-date">Created on ${formattedDate}</p>
+                        <p class="card-text">${
+                          outputs.seasonal_advice ||
+                          "Recommendation based on your soil and climate parameters."
+                        }</p>
+                        <div class="soil-params">
+                            <span class="soil-param">N: ${
+                              inputs.nitrogen
+                            }</span>
+                            <span class="soil-param">P: ${
+                              inputs.phosphorus
+                            }</span>
+                            <span class="soil-param">K: ${
+                              inputs.potassium
+                            }</span>
+                            <span class="soil-param">pH: ${inputs.ph}</span>
+                        </div>
+                        <button class="btn btn-outline-success mt-3 view-details" 
+                                data-id="${
+                                  recommendation._id
+                                }">View Details</button>
+                    </div>
+                </div>
+            `;
+
+        // Add event listener to the button
+        col
+          .querySelector(".view-details")
+          .addEventListener("click", function () {
+            showRecommendationDetails(this.getAttribute("data-id"));
+          });
+
+        return col;
+      }
+
+      function showRecommendationDetails(recommendationId) {
+        // Show loading in modal
+        const modalBody = document.getElementById("modalBody");
+        modalBody.innerHTML = `
+                <div class="text-center py-4">
+                    <div class="spinner-border text-success" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Loading recommendation details...</p>
+                </div>
+            `;
+
+        // Show modal
+        const recommendationModal = new bootstrap.Modal(
+          document.getElementById("recommendationDetailModal")
+        );
+        recommendationModal.show();
+
+        // Fetch recommendation details
+        fetch(`/api/recommendation/${recommendationId}`)
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.success) {
+              const rec = data.recommendation;
+              const inputs = rec.inputs;
+              const outputs = rec.outputs;
+              const date = new Date(rec.recommendation_date);
+
+              // Update modal title
+              document.getElementById(
+                "modalCropName"
+              ).textContent = `${capitalizeFirstLetter(
+                outputs.predicted_crop
+              )} Recommendation Details`;
+
+              // Populate modal with recommendation details
+              modalBody.innerHTML = `
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6>Input Parameters</h6>
+                                    <table class="table table-sm">
+                                        <tbody>
+                                            <tr>
+                                                <th>Nitrogen (N)</th>
+                                                <td>${
+                                                  inputs.nitrogen
+                                                } mg/kg</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Phosphorus (P)</th>
+                                                <td>${
+                                                  inputs.phosphorus
+                                                } mg/kg</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Potassium (K)</th>
+                                                <td>${
+                                                  inputs.potassium
+                                                } mg/kg</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Temperature</th>
+                                                <td>${
+                                                  inputs.temperature
+                                                } °C</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Humidity</th>
+                                                <td>${inputs.humidity}%</td>
+                                            </tr>
+                                            <tr>
+                                                <th>pH Level</th>
+                                                <td>${inputs.ph}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Rainfall</th>
+                                                <td>${inputs.rainfall} mm</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Province</th>
+                                                <td>${
+                                                  inputs.province ||
+                                                  "Not specified"
+                                                }</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6>Recommendation Results</h6>
+                                    <div class="card mb-3">
+                                        <div class="card-body">
+                                            <h5 class="card-title">${capitalizeFirstLetter(
+                                              outputs.predicted_crop
+                                            )}</h5>
+                                            <h6 class="card-subtitle mb-2 text-muted">Season: ${
+                                              outputs.season
+                                            }</h6>
+                                            <p class="card-text">${
+                                              outputs.seasonal_advice ||
+                                              "No specific seasonal advice available."
+                                            }</p>
+                                        </div>
+                                    </div>
+                                    <p class="text-muted">
+                                        Recommendation created on:<br>${date.toLocaleDateString()} at ${date.toLocaleTimeString()}
+                                    </p>
+                                </div>
+                            </div>
+                        `;
+            } else {
+              modalBody.innerHTML = `
+                            <div class="alert alert-danger" role="alert">
+                                Error loading recommendation details: ${data.error}
+                            </div>
+                        `;
+            }
+          })
+          .catch((error) => {
+            console.error("Fetch error:", error);
+            modalBody.innerHTML = `
+                        <div class="alert alert-danger" role="alert">
+                            Error connecting to the server. Please try again later.
+                        </div>
+                    `;
+          });
+      }
+
+      function capitalizeFirstLetter(string) {
+        return string.charAt(0).toUpperCase() + string.slice(1);
+      }
+    </script>
+  </body>
+</html>
